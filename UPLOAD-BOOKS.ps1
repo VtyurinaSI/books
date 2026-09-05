@@ -1,4 +1,4 @@
-﻿param([switch]$Upload)
+param([switch]$Upload)
 $ErrorActionPreference = 'Stop'
 Set-Location -LiteralPath $PSScriptRoot
 $files = @(Get-ChildItem -File -Filter *.pdf) + @(Get-ChildItem -Directory | Where-Object Name -NotLike '.*' | Get-ChildItem -File -Filter *.pdf)
@@ -8,7 +8,7 @@ $batches = New-Object 'System.Collections.Generic.List[object]'
 $currentBatch = @()
 $batchBytes = 0L
 foreach ($file in $files) {
-    if ($batchBytes + $file.Length -gt 600MB -and $currentBatch.Count) {
+    if ($batchBytes + $file.Length -gt 80MB -and $currentBatch.Count) {
         $batches.Add($currentBatch)
         $currentBatch = @()
         $batchBytes = 0L
@@ -17,7 +17,7 @@ foreach ($file in $files) {
     $batchBytes += $file.Length
 }
 if ($currentBatch.Count) { $batches.Add($currentBatch) }
-Write-Host "PDFs: $($files.Count). Batches: $($batches.Count), at most 600 MiB each."
+Write-Host "PDFs: $($files.Count). Batches: $($batches.Count), at most 80 MiB each."
 if (-not $Upload) {
     Write-Host 'Preview only. To commit and upload, run: .\UPLOAD-BOOKS.ps1 -Upload'
     return
