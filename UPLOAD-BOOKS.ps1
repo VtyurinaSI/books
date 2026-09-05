@@ -8,7 +8,7 @@ $batches = New-Object 'System.Collections.Generic.List[object]'
 $currentBatch = @()
 $batchBytes = 0L
 foreach ($file in $files) {
-    if ($batchBytes + $file.Length -gt 80MB -and $currentBatch.Count) {
+    if ($batchBytes + $file.Length -gt 45MB -and $currentBatch.Count) {
         $batches.Add($currentBatch)
         $currentBatch = @()
         $batchBytes = 0L
@@ -17,7 +17,7 @@ foreach ($file in $files) {
     $batchBytes += $file.Length
 }
 if ($currentBatch.Count) { $batches.Add($currentBatch) }
-Write-Host "PDFs: $($files.Count). Batches: $($batches.Count), at most 80 MiB each."
+Write-Host "PDFs: $($files.Count). Batches: $($batches.Count), at most 45 MiB each."
 if (-not $Upload) {
     Write-Host 'Preview only. To commit and upload, run: .\UPLOAD-BOOKS.ps1 -Upload'
     return
@@ -35,10 +35,14 @@ foreach ($batch in $batches) {
     if ($LASTEXITCODE -ne 0) { throw 'Cannot stage PDFs.' }
     git diff --cached --quiet
     if ($LASTEXITCODE -eq 1) {
-        git commit -m "books: batch $index of $($batches.Count)"
+        git commit --quiet -m "books: batch $index of $($batches.Count)"
         if ($LASTEXITCODE -ne 0) { throw 'Commit failed.' }
     } elseif ($LASTEXITCODE -ne 0) { throw 'Cannot inspect index.' }
-    git push -u origin master
+    for ($attempt = 1; $attempt -le 3; $attempt++) {
+        git -c http.version=HTTP/1.1 push -u origin master
+        if ($LASTEXITCODE -eq 0) { break }
+        Write-Host "Push attempt $attempt failed; retrying."
+    }
     if ($LASTEXITCODE -ne 0) { throw 'Push failed. Resolve the error and run this script again.' }
 }
 Write-Host 'Upload complete.'
